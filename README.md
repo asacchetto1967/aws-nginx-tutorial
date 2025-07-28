@@ -82,6 +82,7 @@ Comando:
 Bash
 
 aws ec2 create-tags --resources $VPC_ID --tags Key=Name,Value=EscolaDaNuvemVPC
+
 2.2. Listar as Informações Sobre a Sua VPC
 
 Comando:
