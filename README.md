@@ -18,6 +18,7 @@ Comando:
 Bash
 
 aws ec2 create-key-pair --key-name escola-da-nuvem-key --query 'KeyMaterial' --output text > escola-da-nuvem-key.pem
+
 Observações:
 
 Este comando cria a chave privada e a salva diretamente no arquivo 
@@ -32,6 +33,7 @@ Comando:
 Bash
 
 chmod 400 escola-da-nuvem-key.pem
+
 1.2. Fazer Download da Chave Privada (Opcional, para acesso externo)
 Se você planeja acessar a instância SSH do seu computador local (fora do Cloud Shell), precisará baixar o arquivo .pem.
 
@@ -61,6 +63,7 @@ Comando:
 Bash
 
 VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query Vpc.VpcId --output text)
+
 Observações:
 
 O 
@@ -73,17 +76,20 @@ VPC_ID=$(...) executa o comando e atribui o resultado à variável VPC_ID.
 
 
 2.1. Adicionar um Nome à VPC para Fácil Identificação
+
 Comando:
 
 Bash
 
 aws ec2 create-tags --resources $VPC_ID --tags Key=Name,Value=EscolaDaNuvemVPC
 2.2. Listar as Informações Sobre a Sua VPC
+
 Comando:
 
 Bash
 
 aws ec2 describe-vpcs --filters "Name=tag:Name,Values=EscolaDaNuvemVPC"
+
 3. Criar Sub-rede
 Uma sub-rede é um segmento da sua VPC.
 
@@ -92,6 +98,7 @@ Comando:
 Bash
 
 SUBNET_ID=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.1.0/24 --query Subnet.SubnetId --output text)
+
 Observações:
 
 
@@ -103,12 +110,14 @@ Observações:
 
 
 3.1. Adicionar um Nome à Sub-rede para Fácil Identificação
+
 Comando:
 
 Bash
 
 aws ec2 create-tags --resources $SUBNET_ID --tags Key=Name,Value=EscolaDaNuvemSubnet
 echo "Sub-rede Criada com ID: $SUBNET_ID"
+
 4. Criar um Internet Gateway
 Um Internet Gateway permite que seu servidor web seja acessado através da internet.
 
@@ -117,7 +126,9 @@ Comando:
 Bash
 
 IGW_ID=$(aws ec2 create-internet-gateway --query InternetGateway.InternetGatewayId --output text)
+
 4.1. Adicionar um Nome ao Internet Gateway para Fácil Identificação
+
 Comando:
 
 Bash
@@ -130,6 +141,7 @@ Bash
 
 aws ec2 attach-internet-gateway --vpc-id $VPC_ID --internet-gateway-id $IGW_ID
 echo "Internet Gateway Criado com ID: $IGW_ID e anexado à VPC"
+
 5. Criar uma Tabela de Rotas
 Uma tabela de rotas contém regras que controlam para onde o tráfego da rede é direcionado.
 
@@ -138,12 +150,15 @@ Comando:
 Bash
 
 ROUTE_TABLE_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID --query RouteTable.RouteTableId --output text)
+
 5.1. Adicionar um Nome à Tabela de Rotas para Fácil Identificação
+
 Comando:
 
 Bash
 
 aws ec2 create-tags --resources $ROUTE_TABLE_ID --tags Key=Name,Value=EscolaDaNuvemRouteTable
+
 5.2. Criar uma Rota para a Internet
 Esta rota direciona todo o tráfego de saída (não destinado à VPC) para o Internet Gateway.
 
@@ -152,6 +167,7 @@ Comando:
 Bash
 
 aws ec2 create-route --route-table-id $ROUTE_TABLE_ID --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW_ID
+
 5.3. Associar a Tabela de Rotas à Sub-rede
 A sub-rede agora usará esta tabela de rotas para o tráfego de saída.
 
@@ -161,6 +177,7 @@ Comando:
 Bash
 
 aws ec2 associate-route-table --subnet-id $SUBNET_ID --route-table-id $ROUTE_TABLE_ID
+
 6. Criar um Grupo de Segurança
 O Security Group atua como um firewall virtual para sua instância EC2, controlando o tráfego de entrada e saída.
 
@@ -170,6 +187,7 @@ Comando:
 Bash
 
 SG_ID=$(aws ec2 create-security-group --group-name EscolaDaNuvemSG --description "Acesso SSH e HTTP" --vpc-id $VPC_ID --query GroupId --output text)
+
 6.1. Adicionar um Nome ao Grupo de Segurança para Fácil Identificação
 Comando:
 
@@ -177,6 +195,7 @@ Bash
 
 aws ec2 create-tags --resources $SG_ID --tags Key=Name,Value=EscolaDaNuvemSG
 echo "Grupo de Segurança Criado com ID: $SG_ID"
+
 6.2. Liberar o Acesso SSH (porta 22) e HTTP (porta 80)
 Comandos:
 
@@ -185,6 +204,7 @@ Bash
 MY_IP=$(curl -s http://checkip.amazonaws.com)/32
 aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 22 --cidr $MY_IP
 aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 80 --cidr 0.0.0.0/0
+
 Observações:
 
 
@@ -204,6 +224,7 @@ Bash
 
 AMI_ID=$(aws ssm get-parameters --names /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 --query 'Parameters[0].Value' --output text)
 echo "Utilizando a AMI ID: $AMI_ID"
+
 7.2. Criar a Instância EC2
 Este comando lança sua instância EC2, associando todos os recursos de rede e segurança que você criou.
 
@@ -220,13 +241,15 @@ INSTANCE_ID=$(aws ec2 run-instances \
     --associate-public-ip-address \
     --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=EscolaDaNuvem-WebApp}]' \
     --query 'Instances[0].InstanceId' --output text)
-Aguardar a Instância em Execução:
+    
+Aguardar alguns instantes para a Instância entrar em Execução para só depois rodar o próximo bloco:
 
 Bash
 
 echo "Aguardando a instância com ID: $INSTANCE_ID estar em execução..."
 aws ec2 wait instance-running --instance-ids $INSTANCE_ID
 echo "Instância em execução!"
+
 Observações:
 
 
@@ -241,6 +264,7 @@ Bash
 
 PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 echo "O endereço IP público da sua instância é: $PUBLIC_IP"
+
 8. Instalando e Configurando o Servidor Web Nginx
 Agora você irá se conectar à sua instância e instalar o Nginx.
 
@@ -250,6 +274,7 @@ Comando:
 Bash
 
 ssh -i "escola-da-nuvem-key.pem" ec2-user@$PUBLIC_IP
+
 Observações:
 
 
@@ -268,6 +293,7 @@ Bash
 
 sudo yum update -y
 sudo amazon-linux-extras install nginx1.12 -y
+
 Observações:
 
 
@@ -281,6 +307,7 @@ Bash
 
 sudo systemctl start nginx
 sudo systemctl enable nginx
+
 Observações:
 
 
@@ -296,10 +323,12 @@ Você irá substituir a página index.html padrão do Nginx.
 Bash
 
 cd /usr/share/nginx/html
+
 8.4.2. Criar ou Editar o Arquivo index.html
 Bash
 
 sudo nano index.html
+
 Cole o conteúdo HTML e CSS abaixo no editor nano:
 
 HTML
@@ -376,6 +405,7 @@ color: #555;
 </div>
 </body>
 </html>
+
 Após colar o conteúdo no nano:
 
 Pressione 
@@ -396,6 +426,7 @@ Comando:
 Bash
 
 sudo chmod 644 index.html
+
 Observações:
 
 sudo chmod 644 index.html garante que o Nginx tenha permissão para ler seu novo arquivo. As permissões 
@@ -406,6 +437,7 @@ sudo chmod 644 index.html garante que o Nginx tenha permissão para ler seu novo
 Bash
 
 sudo systemctl restart nginx
+
 Observações:
 
 Este comando reinicia o Nginx para que ele comece a servir o novo conteúdo.
